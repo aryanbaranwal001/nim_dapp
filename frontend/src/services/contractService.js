@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
 
 // UPDATE THIS WITH YOUR DEPLOYED CONTRACT ADDRESS
-const CONTRACT_ADDRESS = '0xf4C8D397504b04c79269a256827A656B54C59071'; // Replace with actual address
+const CONTRACT_ADDRESS = '0x2aC6F9f580D815777bcF8661b75263bf2a1FEAB4'; // Replace with actual address
 
 const CONTRACT_ABI = [
   "function createOrJoinGame() external payable",
