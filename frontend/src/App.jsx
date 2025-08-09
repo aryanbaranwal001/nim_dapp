@@ -79,6 +79,25 @@ function App() {
     setGameData(null);
   };
 
+  const handleCheckGameStatus = async () => {
+    try {
+      console.log('Manually checking game status...');
+      const game = await gameService.getCurrentGame();
+      console.log('Current game state:', game);
+      
+      if (game.isActive && game.player2 !== "0x0000000000000000000000000000000000000000") {
+        console.log('Game is ready! Transitioning to game state.');
+        setGameState('game');
+        setGameData({ gameId: game.gameId.toString(), stones: parseInt(game.stones.toString()) });
+      } else {
+        alert('Still waiting for another player to join...');
+      }
+    } catch (error) {
+      console.error('Error checking game status:', error);
+      alert('Error checking game status: ' + error.message);
+    }
+  };
+
   if (loading) {
     return <LoadingScreen message="Processing transaction..." />;
   }
@@ -97,7 +116,27 @@ function App() {
       )}
       
       {gameState === 'waiting' && (
-        <LoadingScreen message="Waiting for another player..." />
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center text-white">
+            <div className="mb-8">
+              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-white mx-auto mb-4"></div>
+              <p className="text-xl mb-4">Waiting for another player...</p>
+              <p className="text-sm text-gray-300 mb-6">The game will start automatically when someone joins</p>
+            </div>
+            <button
+              onClick={handleCheckGameStatus}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg mr-4"
+            >
+              Check Status
+            </button>
+            <button
+              onClick={handleBackToLobby}
+              className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-6 rounded-lg"
+            >
+              Back to Lobby
+            </button>
+          </div>
+        </div>
       )}
       
       {gameState === 'game' && (

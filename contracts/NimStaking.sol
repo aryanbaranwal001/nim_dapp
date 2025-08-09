@@ -139,26 +139,31 @@ contract NimStaking {
     }
 
     function resetContract() external {
+        // First, collect all players from existing games
+        address[] memory players1 = new address[](gameCounter);
+        address[] memory players2 = new address[](gameCounter);
+
+        for (uint256 i = 1; i <= gameCounter; i++) {
+            players1[i - 1] = games[i].player1;
+            players2[i - 1] = games[i].player2;
+        }
+
         // Delete all games
         for (uint256 i = 1; i <= gameCounter; i++) {
             delete games[i];
         }
 
-        // Delete all playerGame entries
-        // Note: Since playerGame keys are addresses and you don't track all players,
-        // you can't easily delete all entries here. So let's just reset playerGame for all players
-        // who currently have a game by iterating over games.
-
-        for (uint256 i = 1; i <= gameCounter; i++) {
-            Game memory g = games[i];
-            if (g.player1 != address(0)) {
-                delete playerGame[g.player1];
+        // Delete playerGame entries for all collected players
+        for (uint256 i = 0; i < gameCounter; i++) {
+            if (players1[i] != address(0)) {
+                delete playerGame[players1[i]];
             }
-            if (g.player2 != address(0)) {
-                delete playerGame[g.player2];
+            if (players2[i] != address(0)) {
+                delete playerGame[players2[i]];
             }
         }
 
+        // Reset counters and waiting game
         gameCounter = 0;
         waitingGameId = 0;
     }
