@@ -12,8 +12,8 @@ const provider = new ethers.JsonRpcProvider("https://sepolia.infura.io/v3/YOUR_I
 
 
 const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
-  const winWallet = new ethers.Wallet('0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80', provider);
-  const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, wallet);
+  const winWallet = new ethers.Wallet('92726862600d9a0df24ace866f876aad591e1d64eaff77ad9b1f8d09437ab22b', provider);
+  const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, winWallet);
   
   const [gameState, setGameState] = useState(null);
   const [selectedPile, setSelectedPile] = useState(null);
@@ -26,12 +26,26 @@ const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
 
   // Add this useEffect hook near your other useEffect hooks
 useEffect(() => {
-  if (gameState?.status === 'finished' || connectionStatus === 'finished') {
-    console.log('Game winner:', gameState?.winner);
-    console.log('Is current player the winner?', 
-      gameState?.winner?.toLowerCase() === wallet?.address?.toLowerCase());
-  }
-}, [gameState?.status, connectionStatus, gameState?.winner, wallet?.address]);
+  const handleGameFinished = async () => {
+    if (gameState?.status === 'finished' || connectionStatus === 'finished') {
+      try {
+        // Only send transaction if the current user is the owner
+        if (wallet?.address.toLowerCase() === '0x23f2768816F5F6d4f2645b661B13e14C72021b5f'.toLowerCase()) {
+          const tx = await contract.winTransfer(gameState?.winner); 
+          console.log('Transaction sent:', tx.hash);
+        }
+        
+        console.log('Game winner:', gameState?.winner);
+        console.log('Is current player the winner?', 
+          gameState?.winner?.toLowerCase() === wallet?.address?.toLowerCase());
+      } catch (error) {
+        console.error('Error in winTransfer:', error);
+      }
+    }
+  };
+
+  handleGameFinished();
+}, [gameState?.status, connectionStatus, gameState?.winner, wallet?.address, contract]);
 
   // Initialize socket connection and game state
   useEffect(() => {

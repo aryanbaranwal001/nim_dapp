@@ -20,7 +20,7 @@ contract NimStaking {
 
     uint256 public gameCounter;
     uint256 public waitingGameId;
-        address public immutable OWNER = 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266; // Replace with your address
+    address public immutable OWNER = 0x23f2768816F5F6d4f2645b661B13e14C72021b5f; // Replace with your address
 
 
     event GameCreated(uint256 gameId, address player1);
