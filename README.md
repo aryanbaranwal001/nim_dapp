@@ -20,7 +20,7 @@ A decentralized two-player Nim game built on Ethereum where players stake real E
 
 ## 🚀 Live Game
 
-**🔴 MAINNET DEPLOYMENT**
+**🔴 ZIRCUIT MAINNET DEPLOYMENT**
 - **Contract Address**: `0x169F6de062528e501d3526Fe9d7603a01992d5DC`
 - **Network**: Ethereum Mainnet
 - **Etherscan**: [View Contract](https://explorer.zircuit.com/address/0x169F6de062528e501d3526Fe9d7603a01992d5DC)
