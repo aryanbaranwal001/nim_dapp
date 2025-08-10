@@ -9,13 +9,13 @@ A decentralized two-player Nim game built on Ethereum where players stake real E
 
 ## 🎯 Game Overview
 
-**Nim** is a mathematical strategy game where two players take turns removing stones from piles. In our **misère variant**, the player who takes the last stone **loses**. Each game requires both players to stake **0.1 ETH**, and the winner takes the entire **0.2 ETH** pot.
+**Nim** is a mathematical strategy game where two players take turns removing stones from piles. In our **misère variant**, the player who takes the last stone **loses**. Each game requires both players to stake **0.0001 ETH**, and the winner takes the entire **0.0002 ETH** pot.
 
 ### 🏆 Game Rules
-- 4 piles of stones: **3, 5, 7** stones initially
+- 3 piles of stones: **3, 5, 7** stones initially
 - Players alternate turns removing **1 or more stones** from **any single pile**
 - The player who **empties all piles** (takes the last stone) **loses**
-- Winner receives all staked ETH (**0.2 ETH total**)
+- Winner receives all staked ETH (**0.0002 ETH total**)
 - Real-time multiplayer with instant updates
 
 ## 🚀 Live Game
@@ -88,8 +88,8 @@ cd backend && npm run dev
 cd frontend && npm run dev
 
 #Connect to Mainnet (Real ETH)
+#Enjoy the game
 
-```bash
 # 1. Update frontend/src/config/contract-config.js:
 export const CONTRACT_ADDRESS = "0x169F6de062528e501d3526Fe9d7603a01992d5DC";
 
