@@ -106,13 +106,13 @@ export const CONTRACT_ADDRESS = "0x169F6de062528e501d3526Fe9d7603a01992d5DC";
 5. **Win Condition**: Force opponent to take the last stone
 6. **Collect Winnings**: Winner automatically receives 0.0002 ETH
 
-### Game Flow
 ```
+### Game Flow
 Player 1: Connect → Stake 0.0001 ETH → Wait for opponent
 Player 2: Connect → Stake 0.0001 ETH → Game starts!
 Both: Take turns removing matches
 Winner: Receives 0.0002 ETH automatically
-```
+
 
 ### Backend Configuration
 The backend runs on `http://localhost:3001` by default. Update `backend/server.js` to change port:
@@ -155,13 +155,3 @@ const PORT = process.env.PORT || 3001;
 - `Finished`: Game completed, funds distributed
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## ⚠️ Disclaimer
-
-**This software is for educational and entertainment purposes. Users are responsible for:**
-- Understanding Ethereum transaction costs and risks
-- Securing their private keys and MetaMask accounts  
-- Complying with local laws regarding online gaming
-- Understanding that ETH stakes can be lost
-
-
