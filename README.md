@@ -12,7 +12,7 @@ A decentralized two-player Nim game built on Ethereum where players stake real E
 **Nim** is a mathematical strategy game where two players take turns removing stones from piles. In our **misère variant**, the player who takes the last stone **loses**. Each game requires both players to stake **0.1 ETH**, and the winner takes the entire **0.2 ETH** pot.
 
 ### 🏆 Game Rules
-- 4 piles of stones: **3, 5, 7, 9** stones initially
+- 4 piles of stones: **3, 5, 7** stones initially
 - Players alternate turns removing **1 or more stones** from **any single pile**
 - The player who **empties all piles** (takes the last stone) **loses**
 - Winner receives all staked ETH (**0.2 ETH total**)
@@ -23,7 +23,7 @@ A decentralized two-player Nim game built on Ethereum where players stake real E
 **🔴 ZIRCUIT MAINNET DEPLOYMENT**
 - **Contract Address**: `0x169F6de062528e501d3526Fe9d7603a01992d5DC`
 - **Network**: Ethereum Mainnet
-- **Etherscan**: [View Contract](https://explorer.zircuit.com/address/0x169F6de062528e501d3526Fe9d7603a01992d5DC)
+- **Zircuit Scan**: [View Contract](https://explorer.zircuit.com/address/0x169F6de062528e501d3526Fe9d7603a01992d5DC)
 
 **⚠️ WARNING**: This uses **real ETH** on mainnet. Each game costs **0.0001 ETH** to play.
 
