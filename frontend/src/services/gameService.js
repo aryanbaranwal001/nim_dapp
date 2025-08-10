@@ -1,6 +1,7 @@
 import { io } from "socket.io-client";
 import { contractService } from "./contractService";
 
+
 class GameService {
   constructor() {
     this.socket = io("http://localhost:3001");
@@ -80,6 +81,19 @@ class GameService {
       player2: game.player2,
       stones: game.stones.toString()
     });
+
+    return {
+      gameId,
+      isActive: game.isActive,
+      player1: game.player1,
+      player2: game.player2,
+      stones: game.stones.toString()
+    };
+
+    
+
+
+
 
     // Check if game is already active (player joined existing game)
     if (game.isActive && game.player2 !== "0x0000000000000000000000000000000000000000") {
