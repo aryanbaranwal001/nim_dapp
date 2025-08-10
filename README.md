@@ -89,11 +89,7 @@ cd frontend && npm run dev
 
 #Connect to Mainnet (Real ETH)
 #Enjoy the game
-
-# 1. Update frontend/src/config/contract-config.js:
-export const CONTRACT_ADDRESS = "0x169F6de062528e501d3526Fe9d7603a01992d5DC";
-
-## 🎮 How to Play
+```
 
 ### For Players
 
@@ -106,7 +102,6 @@ export const CONTRACT_ADDRESS = "0x169F6de062528e501d3526Fe9d7603a01992d5DC";
 5. **Win Condition**: Force opponent to take the last stone
 6. **Collect Winnings**: Winner automatically receives 0.0002 ETH
 
-```
 ### Game Flow
 Player 1: Connect → Stake 0.0001 ETH → Wait for opponent
 Player 2: Connect → Stake 0.0001 ETH → Game starts!
@@ -153,5 +148,3 @@ const PORT = process.env.PORT || 3001;
 - `WaitingForPlayer`: Game created, waiting for second player
 - `InProgress`: Both players joined, game active
 - `Finished`: Game completed, funds distributed
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
