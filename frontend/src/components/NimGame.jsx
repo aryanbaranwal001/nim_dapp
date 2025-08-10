@@ -4,10 +4,11 @@ import useGameStore from '../services/useGameStore';
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from "../services/contractService";
 import { ethers } from "ethers";
 
-const provider = new ethers.JsonRpcProvider("https://sepolia.infura.io/v3/YOUR_INFURA_PROJECT_ID", {
+const provider = new ethers.JsonRpcProvider("https://api.zan.top/eth-sepolia", {
   name: "sepolia",
   chainId: 11155111
 });
+
 
 
 
@@ -27,25 +28,87 @@ const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
   // Add this useEffect hook near your other useEffect hooks
 useEffect(() => {
   const handleGameFinished = async () => {
-    if (gameState?.status === 'finished' || connectionStatus === 'finished') {
-      try {
-        // Only send transaction if the current user is the owner
-        if (wallet?.address.toLowerCase() === '0x23f2768816F5F6d4f2645b661B13e14C72021b5f'.toLowerCase()) {
-          const tx = await contract.winTransfer(gameState?.winner); 
-          console.log('Transaction sent:', tx.hash);
-        }
-        
-        console.log('Game winner:', gameState?.winner);
-        console.log('Is current player the winner?', 
-          gameState?.winner?.toLowerCase() === wallet?.address?.toLowerCase());
-      } catch (error) {
-        console.error('Error in winTransfer:', error);
+    try {
+      // Only proceed if game is finished and we have necessary data
+      if ((gameState?.status !== 'finished' && connectionStatus !== 'finished') || 
+          !gameState?.winner) {
+        console.log('Game not finished or missing data:', {
+          gameStatus: gameState?.status,
+          connectionStatus,
+          winner: gameState?.winner
+        });
+        return;
+      }
+
+      console.log('Game finished detected. Checking for winTransfer...', {
+        winner: gameState.winner,
+        contractOwner: await contract.owner() // Log who the actual owner is
+      });
+
+      // Check if the winWallet is the contract owner
+      const owner = await contract.owner();
+      if (winWallet.address.toLowerCase() !== owner.toLowerCase()) {
+        console.log('Current wallet is not contract owner:', {
+          currentWallet: winWallet.address,
+          contractOwner: owner
+        });
+        return;
+      }
+
+      console.log('Attempting winTransfer...');
+      
+      // Additional validation
+      if (!ethers.isAddress(gameState.winner)) {
+        throw new Error(`Invalid winner address: ${gameState.winner}`);
+      }
+
+      // Estimate gas first
+      const gasEstimate = await contract.connect(winWallet).winTransfer.estimateGas(gameState.winner);
+      console.log('Gas estimate:', gasEstimate.toString());
+
+      // Send transaction with higher gas limit (add 20% buffer using BigInt)
+      const tx = await contract.connect(winWallet).winTransfer(gameState.winner, {
+        gasLimit: gasEstimate * 120n / 100n // Using BigInt arithmetic
+      });
+      
+      console.log('Transaction sent:', {
+        hash: tx.hash,
+        to: tx.to,
+        from: tx.from,
+        value: tx.value?.toString()
+      });
+
+      // Wait for transaction receipt
+      const receipt = await tx.wait();
+      console.log('Transaction mined:', {
+        blockNumber: receipt.blockNumber,
+        status: receipt.status === 1 ? 'success' : 'failed',
+        gasUsed: receipt.gasUsed.toString()
+      });
+
+      if (receipt.status !== 1) {
+        throw new Error('Transaction failed');
+      }
+
+      console.log('winTransfer completed successfully');
+    } catch (error) {
+      console.error('Error in winTransfer process:', {
+        error: error.message,
+        stack: error.stack,
+        contractAddress: CONTRACT_ADDRESS,
+        currentChainId: (await provider.getNetwork())?.chainId,
+        winWalletBalance: (await provider.getBalance(winWallet.address)).toString()
+      });
+
+      if (error.code === 'INSUFFICIENT_FUNDS') {
+        console.error('Error: Win wallet has insufficient funds for gas');
       }
     }
   };
 
   handleGameFinished();
-}, [gameState?.status, connectionStatus, gameState?.winner, wallet?.address, contract]);
+}, [gameState?.status, connectionStatus, gameState?.winner, contract]);
+
 
   // Initialize socket connection and game state
   useEffect(() => {
