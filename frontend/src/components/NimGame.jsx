@@ -31,6 +31,9 @@ const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
     newSocket.on('game-update', (data) => {
       console.log('Game update received:', data);
       setGameState(data.gameState);
+      // Reset selection after any update
+      setSelectedPile(null);
+      setSelectedStones(1);
     });
 
     newSocket.on('game-finished', (data) => {
@@ -88,12 +91,21 @@ const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
   }, [game, gameState, wallet?.address]);
 
   const handleMove = async (pile, stones) => {
-    if (!gameState || !isMyTurn() || stones < 1 || stones > gameState.piles[pile]) {
+    if (!gameState || !isMyTurn() || stones < 1 || stones > gameState.piles[pile] || gameState.status !== 'active') {
+      console.log('Move validation failed:', {
+        gameState: !!gameState,
+        isMyTurn: isMyTurn(),
+        stones,
+        availableStones: gameState?.piles[pile],
+        gameStatus: gameState?.status
+      });
       return;
     }
 
     try {
-      // Emit move to socket for real-time updates
+      console.log('Making move:', { pile, stones, gameId, player: wallet.address });
+      
+      // Emit move to socket for instant real-time updates (no blockchain)
       if (socket && gameId) {
         socket.emit('move-made', {
           gameId: gameId,
@@ -103,10 +115,10 @@ const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
         });
       }
 
-      // Call the parent onMove function if provided
-      if (onMove) {
-        await onMove(stones);
-      }
+      // Reset selection after move
+      setSelectedPile(null);
+      setSelectedStones(1);
+      
     } catch (error) {
       console.error('Move failed:', error);
     }
@@ -126,32 +138,32 @@ const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
   const renderPile = (pileIndex, stoneCount) => {
     const matchsticks = [];
     
+    // Create vertical stack of matchsticks
     for (let i = 0; i < stoneCount; i++) {
       matchsticks.push(
         <div
           key={i}
-          className={`relative flex items-center justify-center transform transition-all duration-200 cursor-pointer ${
-            selectedPile === pileIndex && i < selectedStones 
+          className={`relative transform transition-all duration-200 cursor-pointer mb-1 ${
+            selectedPile === pileIndex && i >= stoneCount - selectedStones
               ? 'scale-110 opacity-60' 
               : 'hover:scale-105'
           }`}
           onClick={() => {
             if (isMyTurn() && gameState.status === 'active') {
               setSelectedPile(pileIndex);
-              const maxSelectable = Math.min(stoneCount, stoneCount);
-              setSelectedStones(Math.min(selectedStones, maxSelectable));
+              setSelectedStones(1); // Reset to 1 when selecting new pile
             }
           }}
         >
           {/* Matchstick body */}
-          <div className="w-2 h-20 bg-gradient-to-b from-amber-700 via-amber-600 to-amber-800 rounded-sm shadow-md relative">
+          <div className="w-3 h-16 bg-gradient-to-b from-amber-700 via-amber-600 to-amber-800 rounded-sm shadow-md relative mx-auto">
             {/* Wood grain lines */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-30 w-full h-0.5 top-3"></div>
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-20 w-full h-0.5 top-10"></div>
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-30 w-full h-0.5 top-16"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-30 w-full h-0.5 top-2"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-20 w-full h-0.5 top-8"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-30 w-full h-0.5 top-12"></div>
           </div>
           {/* Match head */}
-          <div className="absolute -top-3 w-3 h-5 bg-gradient-to-b from-red-500 via-red-600 to-red-700 rounded-full shadow-sm"></div>
+          <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-4 h-3 bg-gradient-to-b from-red-500 via-red-600 to-red-700 rounded-full shadow-sm"></div>
         </div>
       );
     }
@@ -161,20 +173,27 @@ const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
         selectedPile === pileIndex 
           ? 'border-amber-400 bg-amber-400/10 shadow-amber-400/20 shadow-lg' 
           : 'border-gray-600'
-      }`}>
+      } ${isMyTurn() && gameState.status === 'active' && stoneCount > 0 ? 'hover:border-amber-300' : ''}`}>
         <h3 className="text-center mb-4 text-lg font-semibold text-white">
           Pile {pileIndex + 1} ({stoneCount} matches)
         </h3>
-        <div className="flex justify-center gap-2 min-h-[100px] items-end">
+        <div className="flex flex-col items-center min-h-[200px] justify-end">
           {stoneCount === 0 ? (
             <div className="text-center text-gray-400">
-              <div className="text-3xl mb-2">💨</div>
+              <div className="text-4xl mb-2">💨</div>
               <p>Empty</p>
             </div>
           ) : (
-            matchsticks
+            <div className="flex flex-col-reverse items-center">
+              {matchsticks}
+            </div>
           )}
         </div>
+        {selectedPile === pileIndex && isMyTurn() && gameState.status === 'active' && stoneCount > 0 && (
+          <div className="text-center mt-4">
+            <p className="text-amber-400 text-sm font-semibold">Selected Pile</p>
+          </div>
+        )}
       </div>
     );
   };
@@ -352,7 +371,7 @@ const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
               </p>
               
               <div className="flex justify-center gap-4 mb-6">
-                {Array.from({ length: Math.min(gameState.piles[selectedPile], gameState.piles[selectedPile]) }, (_, i) => i + 1).map((num) => (
+                {Array.from({ length: gameState.piles[selectedPile] }, (_, i) => i + 1).map((num) => (
                   <button
                     key={num}
                     onClick={() => setSelectedStones(num)}

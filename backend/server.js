@@ -201,7 +201,7 @@ io.on('connection', (socket) => {
             game.gameState.currentPlayer = getOpponentAddress(game.gameState, player);
         }
         
-        // Broadcast update to all players in the game
+        // Broadcast update to all players in the game IMMEDIATELY
         const updateData = {
             gameState: game.gameState
         };
@@ -214,19 +214,17 @@ io.on('connection', (socket) => {
         
         console.log(`Move processed: ${player} took ${stonesTaken} stones from pile ${pile + 1}, piles now: [${game.gameState.piles.join(', ')}]`);
         
-        // If game ended, emit game finished event
+        // If game ended, emit game finished event IMMEDIATELY
         if (game.gameState.status === 'finished') {
-            setTimeout(() => {
-                game.sockets.forEach(s => {
-                    if (s.connected) {
-                        s.emit('game-finished', { 
-                            winner: game.gameState.winner,
-                            gameState: game.gameState 
-                        });
-                    }
-                });
-                console.log(`Game finished: ${gameId}, Winner: ${game.gameState.winner}`);
-            }, 1000); // Small delay to ensure move update is processed first
+            game.sockets.forEach(s => {
+                if (s.connected) {
+                    s.emit('game-finished', { 
+                        winner: game.gameState.winner,
+                        gameState: game.gameState 
+                    });
+                }
+            });
+            console.log(`Game finished: ${gameId}, Winner: ${game.gameState.winner}`);
         }
     });
     
@@ -239,6 +237,7 @@ io.on('connection', (socket) => {
             game.gameState.status = 'finished';
             game.gameState.winner = winner;
             
+            // Emit immediately without delay
             game.sockets.forEach(s => {
                 if (s.connected) {
                     s.emit('game-finished', { 
