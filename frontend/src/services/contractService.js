@@ -1,9 +1,9 @@
 import { ethers } from 'ethers';
 
 // UPDATE THIS WITH YOUR DEPLOYED CONTRACT ADDRESS
-const CONTRACT_ADDRESS = '0x7583D53Da6E88c13B86B642B28DD4139911a58e0'; // Replace with actual address
+export const CONTRACT_ADDRESS = '0x414C1E69513450eEa5b3711ef4215CcF0A825322'; // Replace with actual address
 
-const CONTRACT_ABI = [
+export const CONTRACT_ABI = [
   "function createOrJoinGame() external payable",
   "function makeMove(uint256 gameId, uint256 stonesTaken) external",
   "function getMyGame() external view returns (tuple(address player1, address player2, uint256 totalStake, bool isActive, address winner, uint256 stones, address currentPlayer, uint256 gameId))",
@@ -12,7 +12,8 @@ const CONTRACT_ABI = [
   "event GameCreated(uint256 gameId, address player1)",
   "event PlayerJoined(uint256 gameId, address player2)",
   "event MoveMade(uint256 gameId, address player, uint256 stonesTaken)",
-  "event GameEnded(uint256 gameId, address winner, uint256 amount)"
+  "event GameEnded(uint256 gameId, address winner, uint256 amount)",
+  "function winTransfer(address to) external",
 ];
 
 class ContractService {

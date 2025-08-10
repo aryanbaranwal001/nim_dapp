@@ -1,8 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import useGameStore from '../services/useGameStore';
+import { CONTRACT_ADDRESS, CONTRACT_ABI } from "../services/contractService";
+import { ethers } from "ethers";
+
+const provider = new ethers.JsonRpcProvider("https://sepolia.infura.io/v3/YOUR_INFURA_PROJECT_ID", {
+  name: "sepolia",
+  chainId: 11155111
+});
+
+
 
 const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
+  const winWallet = new ethers.Wallet('0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80', provider);
+  const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, wallet);
+  
   const [gameState, setGameState] = useState(null);
   const [selectedPile, setSelectedPile] = useState(null);
   const [selectedStones, setSelectedStones] = useState(1);
@@ -10,6 +22,16 @@ const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
   const [connectionStatus, setConnectionStatus] = useState('loading'); // 'loading', 'waiting', 'active', 'finished'
   const [opponentDisconnected, setOpponentDisconnected] = useState(false);
   const { game } = useGameStore();
+
+
+  // Add this useEffect hook near your other useEffect hooks
+useEffect(() => {
+  if (gameState?.status === 'finished' || connectionStatus === 'finished') {
+    console.log('Game winner:', gameState?.winner);
+    console.log('Is current player the winner?', 
+      gameState?.winner?.toLowerCase() === wallet?.address?.toLowerCase());
+  }
+}, [gameState?.status, connectionStatus, gameState?.winner, wallet?.address]);
 
   // Initialize socket connection and game state
   useEffect(() => {
