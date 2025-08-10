@@ -2,60 +2,51 @@ import React, { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import useGameStore from '../services/useGameStore';
 
-
-
 const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
-  const [stones, setStones] = useState(21);
+  const [gameState, setGameState] = useState(null);
+  const [selectedPile, setSelectedPile] = useState(null);
   const [selectedStones, setSelectedStones] = useState(1);
-  const [currentPlayer, setCurrentPlayer] = useState(null);
-  const [gameInfo, setGameInfo] = useState(null);
-  const [isMyTurn, setIsMyTurn] = useState(false);
-  const [lastMove, setLastMove] = useState(null);
   const [socket, setSocket] = useState(null);
-  const [gameStatus, setGameStatus] = useState('loading'); // 'loading', 'waiting', 'active', 'finished'
+  const [connectionStatus, setConnectionStatus] = useState('loading'); // 'loading', 'waiting', 'active', 'finished'
   const [opponentDisconnected, setOpponentDisconnected] = useState(false);
   const { game } = useGameStore();
 
-
-  // Initialize socket connection
+  // Initialize socket connection and game state
   useEffect(() => {
-    setGameInfo(game);
-    console.log("gameinfonimgaem", game);
-
     const newSocket = io('http://localhost:3001');
     setSocket(newSocket);
 
     // Socket event listeners
     newSocket.on('waiting-for-opponent', () => {
       console.log('Waiting for opponent...');
-      setGameStatus('waiting');
+      setConnectionStatus('waiting');
     });
 
     newSocket.on('game-ready', (data) => {
       console.log('Game ready:', data);
-      setGameStatus('active');
-      fetchGameInfo();
+      setConnectionStatus('active');
+      setGameState(data.gameState);
     });
 
     newSocket.on('game-update', (data) => {
       console.log('Game update received:', data);
-      const { player, stonesTaken, remainingStones } = data;
-      setStones(remainingStones);
-      setLastMove({ player, stonesTaken });
-      
-      // Update turn based on blockchain state
-      fetchGameInfo();
+      setGameState(data.gameState);
     });
 
     newSocket.on('game-finished', (data) => {
       console.log('Game finished:', data);
-      setGameStatus('finished');
-      fetchGameInfo();
+      setConnectionStatus('finished');
+      setGameState(data.gameState);
     });
 
     newSocket.on('opponent-disconnected', () => {
       console.log('Opponent disconnected');
       setOpponentDisconnected(true);
+    });
+
+    newSocket.on('invalid-move', (data) => {
+      console.error('Invalid move:', data.reason);
+      alert(`Invalid move: ${data.reason}`);
     });
 
     // Join game room if gameId is provided
@@ -80,117 +71,116 @@ const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
     };
   }, [gameId, wallet?.address, gameData?.isWaiting]);
 
+  // Initialize game state from useGameStore if available
   useEffect(() => {
-    if (gameStatus === 'active') {
-      fetchGameInfo();
+    if (game && !gameState) {
+      setGameState({
+        player1: game.player1 || wallet?.address,
+        player2: game.player2 || '0x7AF7A0c89E512E3B449cFf280a2B10677644241b',
+        piles: game.piles || [3, 5, 7],
+        currentPlayer: game.currentPlayer || game.player1 || wallet?.address,
+        lastMove: game.lastMove || null,
+        status: game.status || 'active',
+        winner: game.winner || null,
+        totalMoves: game.totalMoves || 0
+      });
     }
-  }, [gameData, gameStatus]);
+  }, [game, gameState, wallet?.address]);
 
-  useEffect(() => {
-    if (gameData?.stones !== undefined) {
-      setStones(gameData.stones);
-    }
-    if (gameData?.lastMove) {
-      setLastMove(gameData.lastMove);
-    }
-  }, [gameData]);
-
-  const fetchGameInfo = async () => {
-    try {
-      // Mock contract service call - replace with your actual implementation
-      const game = {
-        stones: gameData?.stones || stones,
-        currentPlayer: gameData?.currentPlayer || currentPlayer,
-        player1: gameData?.player1 || wallet?.address,
-        player2: gameData?.player2 || 'opponent-address',
-        gameActive: gameData?.gameActive !== false
-      };
-      
-      console.log("gameinfo", game);
-      setGameInfo(game);
-      setStones(parseInt(game.stones.toString()));
-      setCurrentPlayer(game.currentPlayer);
-      setIsMyTurn(game.currentPlayer?.toLowerCase() === wallet?.address?.toLowerCase());
-    } catch (error) {
-      console.error('Failed to fetch game info:', error);
-    }
-  };
-
-  const handleMove = async () => {
-    if (!isMyTurn || selectedStones < 1 || selectedStones > 3 || selectedStones > stones) {
+  const handleMove = async (pile, stones) => {
+    if (!gameState || !isMyTurn() || stones < 1 || stones > gameState.piles[pile]) {
       return;
     }
 
     try {
-      // Call the parent onMove function
-      await onMove(selectedStones);
-      
       // Emit move to socket for real-time updates
       if (socket && gameId) {
         socket.emit('move-made', {
           gameId: gameId,
           player: wallet.address,
-          stonesTaken: selectedStones,
-          remainingStones: stones - selectedStones
+          pile: pile,
+          stonesTaken: stones
         });
       }
-      
-      setIsMyTurn(false);
-      
-      // Check if game ended
-      if (stones - selectedStones === 0) {
-        if (socket && gameId) {
-          socket.emit('game-ended', {
-            gameId: gameId,
-            winner: wallet.address
-          });
-        }
-        setGameStatus('finished');
+
+      // Call the parent onMove function if provided
+      if (onMove) {
+        await onMove(stones);
       }
     } catch (error) {
       console.error('Move failed:', error);
     }
   };
 
-  const renderMatchsticks = () => {
-    const matchstickElements = [];
-    const rows = Math.ceil(stones / 7); // Arrange in rows of 7
+  const isMyTurn = () => {
+    return gameState?.currentPlayer?.toLowerCase() === wallet?.address?.toLowerCase();
+  };
+
+  const getOpponent = () => {
+    if (!gameState) return '';
+    return gameState.player1.toLowerCase() === wallet?.address?.toLowerCase() 
+      ? gameState.player2 
+      : gameState.player1;
+  };
+
+  const renderPile = (pileIndex, stoneCount) => {
+    const matchsticks = [];
     
-    for (let row = 0; row < rows; row++) {
-      const sticksInRow = Math.min(7, stones - (row * 7));
-      const rowElements = [];
-      
-      for (let i = 0; i < sticksInRow; i++) {
-        rowElements.push(
-          <div
-            key={row * 7 + i}
-            className="relative flex items-center justify-center transform hover:scale-110 transition-transform duration-200"
-          >
-            {/* Matchstick body */}
-            <div className="w-1 h-16 bg-gradient-to-b from-amber-700 via-amber-600 to-amber-800 rounded-sm shadow-md relative">
-              {/* Wood grain lines */}
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-30 w-full h-0.5 top-2"></div>
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-20 w-full h-0.5 top-8"></div>
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-30 w-full h-0.5 top-12"></div>
-            </div>
-            {/* Match head */}
-            <div className="absolute -top-2 w-2 h-4 bg-gradient-to-b from-red-500 via-red-600 to-red-700 rounded-full shadow-sm"></div>
+    for (let i = 0; i < stoneCount; i++) {
+      matchsticks.push(
+        <div
+          key={i}
+          className={`relative flex items-center justify-center transform transition-all duration-200 cursor-pointer ${
+            selectedPile === pileIndex && i < selectedStones 
+              ? 'scale-110 opacity-60' 
+              : 'hover:scale-105'
+          }`}
+          onClick={() => {
+            if (isMyTurn() && gameState.status === 'active') {
+              setSelectedPile(pileIndex);
+              const maxSelectable = Math.min(stoneCount, stoneCount);
+              setSelectedStones(Math.min(selectedStones, maxSelectable));
+            }
+          }}
+        >
+          {/* Matchstick body */}
+          <div className="w-2 h-20 bg-gradient-to-b from-amber-700 via-amber-600 to-amber-800 rounded-sm shadow-md relative">
+            {/* Wood grain lines */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-30 w-full h-0.5 top-3"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-20 w-full h-0.5 top-10"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-30 w-full h-0.5 top-16"></div>
           </div>
-        );
-      }
-      
-      matchstickElements.push(
-        <div key={row} className="flex justify-center gap-4 mb-2">
-          {rowElements}
+          {/* Match head */}
+          <div className="absolute -top-3 w-3 h-5 bg-gradient-to-b from-red-500 via-red-600 to-red-700 rounded-full shadow-sm"></div>
         </div>
       );
     }
     
-    return matchstickElements;
+    return (
+      <div className={`bg-black/30 backdrop-blur-lg rounded-lg p-6 border transition-all duration-300 ${
+        selectedPile === pileIndex 
+          ? 'border-amber-400 bg-amber-400/10 shadow-amber-400/20 shadow-lg' 
+          : 'border-gray-600'
+      }`}>
+        <h3 className="text-center mb-4 text-lg font-semibold text-white">
+          Pile {pileIndex + 1} ({stoneCount} matches)
+        </h3>
+        <div className="flex justify-center gap-2 min-h-[100px] items-end">
+          {stoneCount === 0 ? (
+            <div className="text-center text-gray-400">
+              <div className="text-3xl mb-2">💨</div>
+              <p>Empty</p>
+            </div>
+          ) : (
+            matchsticks
+          )}
+        </div>
+      </div>
+    );
   };
 
   // Loading state
-  if (gameStatus === 'loading') {
+  if (connectionStatus === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <div className="text-white text-center">
@@ -202,7 +192,7 @@ const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
   }
 
   // Waiting for opponent
-  if (gameStatus === 'waiting') {
+  if (connectionStatus === 'waiting') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <div className="text-white text-center max-w-md">
@@ -256,7 +246,7 @@ const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
     );
   }
 
-  if (!gameInfo) {
+  if (!gameState) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <div className="text-white text-center">
@@ -267,24 +257,23 @@ const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
     );
   }
 
-  const opponent = gameInfo.player1.toLowerCase() === wallet.address.toLowerCase() 
-    ? gameInfo.player2 
-    : gameInfo.player1;
+  const totalStones = gameState.piles.reduce((sum, pile) => sum + pile, 0);
+  const opponent = getOpponent();
 
   return (
     <div className="min-h-screen p-6 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      <div className="max-w-4xl mx-auto text-white">
+      <div className="max-w-6xl mx-auto text-white">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-amber-400 via-red-400 to-orange-400 bg-clip-text text-transparent drop-shadow-lg">
-            🔥 Nim: Matchstick Game
+            🔥 Nim: Multi-Pile Game
           </h1>
           <div className="bg-black/30 backdrop-blur-lg rounded-lg p-4 inline-block border border-amber-500/30">
             <p className="text-xl font-semibold">
-              <span className="text-amber-400">{stones}</span> matchsticks remaining
+              <span className="text-amber-400">{totalStones}</span> matchsticks remaining
             </p>
             <p className="text-sm text-gray-300 mt-1">
-              Take 1-3 matchsticks • Don't be the last to take!
+              Take stones from ONE pile • Don't take the last stone!
             </p>
           </div>
         </div>
@@ -292,33 +281,43 @@ const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
         {/* Player Info */}
         <div className="grid grid-cols-2 gap-4 mb-8">
           <div className={`bg-black/30 backdrop-blur-lg rounded-lg p-4 border transition-all duration-300 ${
-            gameInfo.player1.toLowerCase() === wallet.address.toLowerCase() && isMyTurn 
+            gameState.player1.toLowerCase() === wallet?.address?.toLowerCase() && isMyTurn()
               ? 'border-green-400 bg-green-400/10 shadow-green-400/20 shadow-lg' 
               : 'border-gray-600'
           }`}>
-            <h3 className="font-semibold mb-2 text-lg">🎮 You</h3>
-            <p className="text-xs font-mono break-all text-gray-300">{wallet.address}</p>
-            {gameInfo.player1.toLowerCase() === wallet.address.toLowerCase() && isMyTurn && (
+            <h3 className="font-semibold mb-2 text-lg">
+              {gameState.player1.toLowerCase() === wallet?.address?.toLowerCase() ? '🎮 You' : '🤖 Player 1'}
+            </h3>
+            <p className="text-xs font-mono break-all text-gray-300">{gameState.player1}</p>
+            {gameState.player1.toLowerCase() === wallet?.address?.toLowerCase() && isMyTurn() && (
               <div className="flex items-center mt-2">
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse mr-2"></div>
                 <p className="text-green-400 font-semibold">Your Turn!</p>
+              </div>
+            )}
+            {gameState.currentPlayer?.toLowerCase() === gameState.player1.toLowerCase() && !isMyTurn() && (
+              <div className="flex items-center mt-2">
+                <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse mr-2"></div>
+                <p className="text-yellow-400 font-semibold">Their Turn</p>
               </div>
             )}
           </div>
           <div className={`bg-black/30 backdrop-blur-lg rounded-lg p-4 border transition-all duration-300 ${
-            gameInfo.player2.toLowerCase() === wallet.address.toLowerCase() && isMyTurn 
+            gameState.player2.toLowerCase() === wallet?.address?.toLowerCase() && isMyTurn()
               ? 'border-green-400 bg-green-400/10 shadow-green-400/20 shadow-lg' 
               : 'border-gray-600'
           }`}>
-            <h3 className="font-semibold mb-2 text-lg">🤖 Opponent</h3>
-            <p className="text-xs font-mono break-all text-gray-300">{opponent}</p>
-            {gameInfo.player2.toLowerCase() === wallet.address.toLowerCase() && isMyTurn && (
+            <h3 className="font-semibold mb-2 text-lg">
+              {gameState.player2.toLowerCase() === wallet?.address?.toLowerCase() ? '🎮 You' : '🤖 Player 2'}
+            </h3>
+            <p className="text-xs font-mono break-all text-gray-300">{gameState.player2}</p>
+            {gameState.player2.toLowerCase() === wallet?.address?.toLowerCase() && isMyTurn() && (
               <div className="flex items-center mt-2">
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse mr-2"></div>
                 <p className="text-green-400 font-semibold">Your Turn!</p>
               </div>
             )}
-            {!isMyTurn && currentPlayer && currentPlayer.toLowerCase() === opponent.toLowerCase() && (
+            {gameState.currentPlayer?.toLowerCase() === gameState.player2.toLowerCase() && !isMyTurn() && (
               <div className="flex items-center mt-2">
                 <div className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse mr-2"></div>
                 <p className="text-yellow-400 font-semibold">Their Turn</p>
@@ -328,69 +327,73 @@ const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
         </div>
 
         {/* Last Move Info */}
-        {lastMove && (
+        {gameState.lastMove && (
           <div className="text-center mb-6">
             <div className="bg-blue-500/20 border border-blue-400 rounded-lg p-3 inline-block backdrop-blur-sm">
               <p className="text-blue-300">
-                🔥 {lastMove.player.toLowerCase() === wallet.address.toLowerCase() ? 'You' : 'Opponent'} burned {lastMove.stonesTaken} matchstick{lastMove.stonesTaken !== 1 ? 's' : ''}
+                🔥 {gameState.lastMove.player.toLowerCase() === wallet?.address?.toLowerCase() ? 'You' : 'Opponent'} took {gameState.lastMove.stonesTaken} matchstick{gameState.lastMove.stonesTaken !== 1 ? 's' : ''} from pile {gameState.lastMove.pile + 1}
               </p>
             </div>
           </div>
         )}
 
-        {/* Matchsticks Display */}
-        <div className="bg-black/40 backdrop-blur-lg rounded-lg p-8 mb-8 border border-gray-700">
-          <div className="min-h-[120px] flex flex-col items-center justify-center">
-            {stones > 0 ? renderMatchsticks() : (
-              <div className="text-center">
-                <div className="text-6xl mb-4">💨</div>
-                <p className="text-gray-400 text-lg">All matchsticks burned!</p>
-              </div>
-            )}
-          </div>
+        {/* Game Piles */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {gameState.piles.map((stoneCount, index) => renderPile(index, stoneCount))}
         </div>
 
-        {/* Game Controls */}
-        {isMyTurn && stones > 0 && (
-          <div className="text-center">
-            <div className="bg-black/30 backdrop-blur-lg rounded-lg p-6 mb-6 border border-amber-500/30">
+        {/* Move Controls */}
+        {isMyTurn() && gameState.status === 'active' && selectedPile !== null && gameState.piles[selectedPile] > 0 && (
+          <div className="text-center mb-8">
+            <div className="bg-black/30 backdrop-blur-lg rounded-lg p-6 border border-amber-500/30">
               <h3 className="text-2xl font-semibold mb-4 text-amber-400">🔥 Your Turn</h3>
-              <p className="mb-6 text-gray-300">How many matchsticks will you burn?</p>
+              <p className="mb-4 text-gray-300">
+                Selected Pile {selectedPile + 1} - How many stones to take?
+              </p>
               
               <div className="flex justify-center gap-4 mb-6">
-                {[1, 2, 3].map((num) => (
+                {Array.from({ length: Math.min(gameState.piles[selectedPile], gameState.piles[selectedPile]) }, (_, i) => i + 1).map((num) => (
                   <button
                     key={num}
                     onClick={() => setSelectedStones(num)}
-                    disabled={num > stones}
-                    className={`w-20 h-20 rounded-xl font-bold text-xl transition-all duration-300 flex flex-col items-center justify-center ${
+                    className={`w-16 h-16 rounded-xl font-bold text-lg transition-all duration-300 flex flex-col items-center justify-center ${
                       selectedStones === num
                         ? 'bg-gradient-to-br from-amber-500 to-red-500 text-white shadow-lg shadow-amber-500/30 scale-110'
-                        : 'bg-black/40 text-white hover:bg-black/60 border border-gray-600'
-                    } ${
-                      num > stones ? 'opacity-30 cursor-not-allowed' : 'hover:scale-105 cursor-pointer'
+                        : 'bg-black/40 text-white hover:bg-black/60 border border-gray-600 hover:scale-105 cursor-pointer'
                     }`}
                   >
-                    <span className="text-sm">🔥</span>
+                    <span className="text-xs">🔥</span>
                     <span>{num}</span>
                   </button>
                 ))}
               </div>
 
               <button
-                onClick={handleMove}
-                disabled={selectedStones > stones}
+                onClick={() => handleMove(selectedPile, selectedStones)}
+                disabled={selectedStones > gameState.piles[selectedPile]}
                 className="bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 hover:from-red-600 hover:via-orange-600 hover:to-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 px-10 rounded-xl text-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
               >
-                🔥 Burn {selectedStones} Matchstick{selectedStones !== 1 ? 's' : ''}
+                🔥 Take {selectedStones} Stone{selectedStones !== 1 ? 's' : ''}
               </button>
             </div>
           </div>
         )}
 
+        {/* Pile Selection Instructions */}
+        {isMyTurn() && gameState.status === 'active' && selectedPile === null && (
+          <div className="text-center mb-8">
+            <div className="bg-green-500/20 border border-green-400 rounded-lg p-6 backdrop-blur-sm">
+              <h3 className="text-xl font-semibold mb-2 text-green-400">🎯 Your Turn!</h3>
+              <p className="text-green-300">
+                Click on a pile to select it, then choose how many stones to take.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Waiting Message */}
-        {!isMyTurn && stones > 0 && (
-          <div className="text-center">
+        {!isMyTurn() && gameState.status === 'active' && totalStones > 0 && (
+          <div className="text-center mb-8">
             <div className="bg-yellow-500/20 border border-yellow-400 rounded-lg p-6 backdrop-blur-sm">
               <div className="flex items-center justify-center gap-3">
                 <div className="animate-spin rounded-full h-6 w-6 border-2 border-yellow-400 border-t-transparent"></div>
@@ -403,24 +406,54 @@ const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
         )}
 
         {/* Game Over */}
-        {(stones === 0 || gameStatus === 'finished') && (
-          <div className="text-center">
-            <div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-2 border-purple-400 rounded-xl p-8 mb-6 backdrop-blur-sm">
-              <div className="text-6xl mb-4">🏆</div>
+        {(gameState.status === 'finished' || connectionStatus === 'finished') && (
+          <div className="text-center mb-8">
+            <div className="bg-gradient-to-br from-purple-500/20 to-pink-500/20 border-2 border-purple-400 rounded-xl p-8 backdrop-blur-sm">
+              <div className="text-6xl mb-4">
+                {gameState.winner?.toLowerCase() === wallet?.address?.toLowerCase() ? '🏆' : '💔'}
+              </div>
               <h2 className="text-3xl font-bold mb-4 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                 Game Over!
               </h2>
               <p className="text-lg mb-4 text-gray-300">
-                The last matchstick has been burned!
+                {gameState.winner?.toLowerCase() === wallet?.address?.toLowerCase() 
+                  ? 'Congratulations! You won!' 
+                  : 'You lost! Better luck next time.'}
               </p>
-              <div className="bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-lg p-4 border border-green-400">
-                <p className="text-xl font-semibold text-green-400">
-                  💰 Winner gets 0.2 ETH!
+              <div className={`rounded-lg p-4 border ${
+                gameState.winner?.toLowerCase() === wallet?.address?.toLowerCase()
+                  ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-400'
+                  : 'bg-gradient-to-r from-red-500/20 to-pink-500/20 border-red-400'
+              }`}>
+                <p className="text-xl font-semibold">
+                  {gameState.winner?.toLowerCase() === wallet?.address?.toLowerCase() 
+                    ? '💰 You get 0.2 ETH!' 
+                    : '💸 Better luck next time!'}
+                </p>
+                <p className="text-sm mt-2 text-gray-400">
+                  Winner: {gameState.winner === wallet?.address ? 'You' : 'Opponent'}
                 </p>
               </div>
             </div>
           </div>
         )}
+
+        {/* Game Rules */}
+        <div className="bg-black/20 backdrop-blur-lg rounded-lg p-6 mb-8 border border-gray-700">
+          <h3 className="text-xl font-semibold mb-4 text-amber-400">📋 Game Rules</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
+            <div>
+              <p className="mb-2">• Players take turns removing stones from piles</p>
+              <p className="mb-2">• You can only take from ONE pile per turn</p>
+              <p className="mb-2">• Take any number of stones from chosen pile</p>
+            </div>
+            <div>
+              <p className="mb-2">• Player 1 always goes first</p>
+              <p className="mb-2">• The player who takes the LAST stone LOSES</p>
+              <p className="mb-2">• Force your opponent to take the final stone!</p>
+            </div>
+          </div>
+        </div>
 
         {/* Back Button */}
         <div className="text-center">

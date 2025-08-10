@@ -25,15 +25,16 @@ const activeGames = new Map(); // gameId -> {player1, player2, sockets, gameStat
 const waitingPlayers = new Map(); // gameId -> socket
 const playerSockets = new Map(); // playerAddress -> socket
 
-// Game state structure
+// Game state structure for multi-pile Nim
 const createGameState = (player1, player2) => ({
     player1,
     player2,
-    stones: 21,
-    currentPlayer: player1,
+    piles: [3, 5, 7], // Three piles with 3, 5, and 7 stones respectively
+    currentPlayer: player1, // Player 1 always starts
     lastMove: null,
     status: 'active',
-    winner: null
+    winner: null,
+    totalMoves: 0
 });
 
 // Utility functions
@@ -45,6 +46,10 @@ const getOpponentAddress = (gameState, playerAddress) => {
 
 const isPlayerTurn = (gameState, playerAddress) => {
     return gameState.currentPlayer?.toLowerCase() === playerAddress.toLowerCase();
+};
+
+const isGameOver = (gameState) => {
+    return gameState.piles.every(pile => pile === 0);
 };
 
 io.on('connection', (socket) => {
@@ -85,7 +90,7 @@ io.on('connection', (socket) => {
             console.log('Game already active:', gameId);
             
             // Add this socket to existing game if not already present
-            if (!existingGame.sockets.includes(socket)) {
+            if (!existingGame.sockets.some(s => s.id === socket.id)) {
                 existingGame.sockets.push(socket);
             }
             
@@ -132,7 +137,7 @@ io.on('connection', (socket) => {
             
             if (existingGame) {
                 // Player reconnecting to existing game
-                if (!existingGame.sockets.includes(socket)) {
+                if (!existingGame.sockets.some(s => s.id === socket.id)) {
                     existingGame.sockets.push(socket);
                 }
                 socket.emit('game-ready', { 
@@ -150,12 +155,13 @@ io.on('connection', (socket) => {
     });
     
     socket.on('move-made', (data) => {
-        const { gameId, player, stonesTaken, remainingStones } = data;
+        const { gameId, player, pile, stonesTaken } = data;
         console.log('Move made:', data);
         
         const game = activeGames.get(gameId);
         if (!game) {
             console.error('Game not found for move:', gameId);
+            socket.emit('invalid-move', { reason: 'Game not found' });
             return;
         }
         
@@ -166,29 +172,37 @@ io.on('connection', (socket) => {
             return;
         }
         
-        if (stonesTaken < 1 || stonesTaken > 3 || stonesTaken > game.gameState.stones) {
-            console.error('Invalid number of stones:', stonesTaken);
-            socket.emit('invalid-move', { reason: 'Invalid number of stones' });
+        // Validate pile selection
+        if (pile < 0 || pile >= game.gameState.piles.length) {
+            console.error('Invalid pile selection:', pile);
+            socket.emit('invalid-move', { reason: 'Invalid pile selection' });
+            return;
+        }
+        
+        // Validate number of stones
+        if (stonesTaken < 1 || stonesTaken > game.gameState.piles[pile]) {
+            console.error('Invalid number of stones:', stonesTaken, 'Available:', game.gameState.piles[pile]);
+            socket.emit('invalid-move', { reason: `Can only take 1-${game.gameState.piles[pile]} stones from pile ${pile + 1}` });
             return;
         }
         
         // Update game state
-        game.gameState.stones = remainingStones;
-        game.gameState.lastMove = { player, stonesTaken };
-        game.gameState.currentPlayer = getOpponentAddress(game.gameState, player);
+        game.gameState.piles[pile] -= stonesTaken;
+        game.gameState.lastMove = { player, pile, stonesTaken };
+        game.gameState.totalMoves += 1;
         
-        // Check for game end
-        if (remainingStones === 0) {
+        // Check for game end BEFORE switching turns
+        if (isGameOver(game.gameState)) {
             game.gameState.status = 'finished';
-            game.gameState.winner = getOpponentAddress(game.gameState, player); // Winner is the one who didn't take the last stone
+            // In Nim, the player who takes the last stone LOSES
+            game.gameState.winner = getOpponentAddress(game.gameState, player);
+        } else {
+            // Switch turns only if game is not over
+            game.gameState.currentPlayer = getOpponentAddress(game.gameState, player);
         }
         
         // Broadcast update to all players in the game
         const updateData = {
-            player,
-            stonesTaken,
-            remainingStones,
-            currentPlayer: game.gameState.currentPlayer,
             gameState: game.gameState
         };
         
@@ -198,7 +212,7 @@ io.on('connection', (socket) => {
             }
         });
         
-        console.log(`Move processed: ${player} took ${stonesTaken} stones, ${remainingStones} remaining`);
+        console.log(`Move processed: ${player} took ${stonesTaken} stones from pile ${pile + 1}, piles now: [${game.gameState.piles.join(', ')}]`);
         
         // If game ended, emit game finished event
         if (game.gameState.status === 'finished') {
@@ -322,8 +336,10 @@ app.get('/stats', (req, res) => {
         gameId,
         player1: game.player1,
         player2: game.player2,
-        stones: game.gameState.stones,
+        piles: game.gameState.piles,
         status: game.gameState.status,
+        currentPlayer: game.gameState.currentPlayer,
+        totalMoves: game.gameState.totalMoves,
         connectedSockets: game.sockets.filter(s => s.connected).length
     }));
     
