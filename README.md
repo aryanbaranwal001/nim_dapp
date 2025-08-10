@@ -9,12 +9,12 @@ A decentralized two-player Nim game built on Ethereum where players stake real E
 
 ## 🎯 Game Overview
 
-**Nim** is a mathematical strategy game where two players take turns removing stones from piles. In our **misère variant**, the player who takes the last stone **loses**. Each game requires both players to stake **0.0001 ETH**, and the winner takes the entire **0.0002 ETH** pot.
+**Nim** is a mathematical strategy game where two players take turns removing matches from bunch of matches. In our **misère variant**, the player who takes the last stone **loses**. Each game requires both players to stake **0.0001 ETH**, and the winner takes the entire **0.0002 ETH** pot.
 
 ### 🏆 Game Rules
-- 3 piles of stones: **3, 5, 7** stones initially
-- Players alternate turns removing **1 or more stones** from **any single pile**
-- The player who **empties all piles** (takes the last stone) **loses**
+- 3 bunch of matches: **3, 5, 7** matches initially
+- Players alternate turns removing **1 or more matches** from **any single bunch**
+- The player who **empties all bunch of matches** (takes the last stone) **loses**
 - Winner receives all staked ETH (**0.0002 ETH total**)
 - Real-time multiplayer with instant updates
 
@@ -22,7 +22,7 @@ A decentralized two-player Nim game built on Ethereum where players stake real E
 
 **🔴 ZIRCUIT MAINNET DEPLOYMENT**
 - **Contract Address**: `0x169F6de062528e501d3526Fe9d7603a01992d5DC`
-- **Network**: Ethereum Mainnet
+- **Network**: Zircuit Mainnet
 - **Zircuit Scan**: [View Contract](https://explorer.zircuit.com/address/0x169F6de062528e501d3526Fe9d7603a01992d5DC)
 
 **⚠️ WARNING**: This uses **real ETH** on mainnet. Each game costs **0.0001 ETH** to play.
@@ -102,7 +102,7 @@ export const CONTRACT_ADDRESS = "0x169F6de062528e501d3526Fe9d7603a01992d5DC";
 3. **Start/Join Game**: 
    - If no games available: Creates new game (0.0001 ETH stake)
    - If game waiting: Joins existing game (0.0001 ETH stake)
-4. **Play Nim**: Take turns removing stones from piles
+4. **Play Nim**: Take turns removing matches from bunch of matches
 5. **Win Condition**: Force opponent to take the last stone
 6. **Collect Winnings**: Winner automatically receives 0.0002 ETH
 
@@ -110,7 +110,7 @@ export const CONTRACT_ADDRESS = "0x169F6de062528e501d3526Fe9d7603a01992d5DC";
 ```
 Player 1: Connect → Stake 0.0001 ETH → Wait for opponent
 Player 2: Connect → Stake 0.0001 ETH → Game starts!
-Both: Take turns removing stones
+Both: Take turns removing matches
 Winner: Receives 0.0002 ETH automatically
 ```
 
