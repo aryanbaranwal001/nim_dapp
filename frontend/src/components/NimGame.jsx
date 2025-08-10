@@ -136,62 +136,61 @@ const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
   };
 
   const renderPile = (pileIndex, stoneCount) => {
-    const matchsticks = [];
-    
-    // Create vertical stack of matchsticks
-    for (let i = 0; i < stoneCount; i++) {
-      matchsticks.push(
-        <div
-          key={i}
-          className={`relative transform transition-all duration-200 cursor-pointer mb-1 ${
-            selectedPile === pileIndex && i >= stoneCount - selectedStones
-              ? 'scale-110 opacity-60' 
-              : 'hover:scale-105'
-          }`}
-          onClick={() => {
-            if (isMyTurn() && gameState.status === 'active') {
-              setSelectedPile(pileIndex);
-              setSelectedStones(1); // Reset to 1 when selecting new pile
-            }
-          }}
-        >
-          {/* Matchstick body */}
-          <div className="w-3 h-16 bg-gradient-to-b from-amber-700 via-amber-600 to-amber-800 rounded-sm shadow-md relative mx-auto">
-            {/* Wood grain lines */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-30 w-full h-0.5 top-2"></div>
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-20 w-full h-0.5 top-8"></div>
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-30 w-full h-0.5 top-12"></div>
-          </div>
-          {/* Match head */}
-          <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-4 h-3 bg-gradient-to-b from-red-500 via-red-600 to-red-700 rounded-full shadow-sm"></div>
-        </div>
-      );
-    }
-    
     return (
       <div className={`bg-black/30 backdrop-blur-lg rounded-lg p-6 border transition-all duration-300 ${
         selectedPile === pileIndex 
           ? 'border-amber-400 bg-amber-400/10 shadow-amber-400/20 shadow-lg' 
           : 'border-gray-600'
-      } ${isMyTurn() && gameState.status === 'active' && stoneCount > 0 ? 'hover:border-amber-300' : ''}`}>
+      } ${isMyTurn() && gameState.status === 'active' && stoneCount > 0 ? 'hover:border-amber-300 cursor-pointer' : ''}`}
+      onClick={() => {
+        if (isMyTurn() && gameState.status === 'active' && stoneCount > 0) {
+          setSelectedPile(pileIndex);
+          setSelectedStones(1); // Reset to 1 when selecting new pile
+        }
+      }}>
         <h3 className="text-center mb-4 text-lg font-semibold text-white">
-          Pile {pileIndex + 1} ({stoneCount} matches)
+          Row {pileIndex + 1} ({stoneCount} matches)
         </h3>
-        <div className="flex flex-col items-center min-h-[200px] justify-end">
+        
+        <div className="flex flex-col items-center min-h-[200px] justify-center space-y-2">
           {stoneCount === 0 ? (
             <div className="text-center text-gray-400">
               <div className="text-4xl mb-2">💨</div>
-              <p>Empty</p>
+              <p>Empty Row</p>
             </div>
           ) : (
-            <div className="flex flex-col-reverse items-center">
-              {matchsticks}
+            // Create horizontal rows stacked vertically
+            <div className="space-y-1">
+              {/* Each "row" of matches displayed horizontally */}
+              <div className="flex justify-center items-end space-x-1">
+                {Array.from({ length: stoneCount }, (_, i) => (
+                  <div
+                    key={i}
+                    className={`relative transform transition-all duration-200 ${
+                      selectedPile === pileIndex && i >= stoneCount - selectedStones
+                        ? 'scale-110 opacity-60' 
+                        : 'hover:scale-105'
+                    }`}
+                  >
+                    {/* Matchstick body */}
+                    <div className="w-3 h-16 bg-gradient-to-b from-amber-700 via-amber-600 to-amber-800 rounded-sm shadow-md relative">
+                      {/* Wood grain lines */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-30 w-full h-0.5 top-2"></div>
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-20 w-full h-0.5 top-8"></div>
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-amber-500 to-transparent opacity-30 w-full h-0.5 top-12"></div>
+                    </div>
+                    {/* Match head */}
+                    <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-4 h-3 bg-gradient-to-b from-red-500 via-red-600 to-red-700 rounded-full shadow-sm"></div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
+        
         {selectedPile === pileIndex && isMyTurn() && gameState.status === 'active' && stoneCount > 0 && (
           <div className="text-center mt-4">
-            <p className="text-amber-400 text-sm font-semibold">Selected Pile</p>
+            <p className="text-amber-400 text-sm font-semibold">✨ Selected Row ✨</p>
           </div>
         )}
       </div>
@@ -285,14 +284,14 @@ const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-amber-400 via-red-400 to-orange-400 bg-clip-text text-transparent drop-shadow-lg">
-            🔥 Nim: Multi-Pile Game
+            🔥 Nim: Row Game
           </h1>
           <div className="bg-black/30 backdrop-blur-lg rounded-lg p-4 inline-block border border-amber-500/30">
             <p className="text-xl font-semibold">
               <span className="text-amber-400">{totalStones}</span> matchsticks remaining
             </p>
             <p className="text-sm text-gray-300 mt-1">
-              Take stones from ONE pile • Don't take the last stone!
+              Take stones from ONE row • Don't take the last stone!
             </p>
           </div>
         </div>
@@ -350,14 +349,14 @@ const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
           <div className="text-center mb-6">
             <div className="bg-blue-500/20 border border-blue-400 rounded-lg p-3 inline-block backdrop-blur-sm">
               <p className="text-blue-300">
-                🔥 {gameState.lastMove.player.toLowerCase() === wallet?.address?.toLowerCase() ? 'You' : 'Opponent'} took {gameState.lastMove.stonesTaken} matchstick{gameState.lastMove.stonesTaken !== 1 ? 's' : ''} from pile {gameState.lastMove.pile + 1}
+                🔥 {gameState.lastMove.player.toLowerCase() === wallet?.address?.toLowerCase() ? 'You' : 'Opponent'} took {gameState.lastMove.stonesTaken} match{gameState.lastMove.stonesTaken !== 1 ? 'es' : ''} from row {gameState.lastMove.pile + 1}
               </p>
             </div>
           </div>
         )}
 
-        {/* Game Piles */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* Game Rows */}
+        <div className="space-y-6 mb-8">
           {gameState.piles.map((stoneCount, index) => renderPile(index, stoneCount))}
         </div>
 
@@ -367,10 +366,10 @@ const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
             <div className="bg-black/30 backdrop-blur-lg rounded-lg p-6 border border-amber-500/30">
               <h3 className="text-2xl font-semibold mb-4 text-amber-400">🔥 Your Turn</h3>
               <p className="mb-4 text-gray-300">
-                Selected Pile {selectedPile + 1} - How many stones to take?
+                Selected Row {selectedPile + 1} - How many matches to take?
               </p>
               
-              <div className="flex justify-center gap-4 mb-6">
+              <div className="flex justify-center gap-4 mb-6 flex-wrap">
                 {Array.from({ length: gameState.piles[selectedPile] }, (_, i) => i + 1).map((num) => (
                   <button
                     key={num}
@@ -392,19 +391,19 @@ const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
                 disabled={selectedStones > gameState.piles[selectedPile]}
                 className="bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 hover:from-red-600 hover:via-orange-600 hover:to-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 px-10 rounded-xl text-lg transition-all duration-300 transform hover:scale-105 shadow-lg hover:shadow-xl"
               >
-                🔥 Take {selectedStones} Stone{selectedStones !== 1 ? 's' : ''}
+                🔥 Take {selectedStones} Match{selectedStones !== 1 ? 'es' : ''}
               </button>
             </div>
           </div>
         )}
 
-        {/* Pile Selection Instructions */}
+        {/* Row Selection Instructions */}
         {isMyTurn() && gameState.status === 'active' && selectedPile === null && (
           <div className="text-center mb-8">
             <div className="bg-green-500/20 border border-green-400 rounded-lg p-6 backdrop-blur-sm">
               <h3 className="text-xl font-semibold mb-2 text-green-400">🎯 Your Turn!</h3>
               <p className="text-green-300">
-                Click on a pile to select it, then choose how many stones to take.
+                Click on a row to select it, then choose how many matches to take.
               </p>
             </div>
           </div>
@@ -462,14 +461,14 @@ const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
           <h3 className="text-xl font-semibold mb-4 text-amber-400">📋 Game Rules</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
             <div>
-              <p className="mb-2">• Players take turns removing stones from piles</p>
-              <p className="mb-2">• You can only take from ONE pile per turn</p>
-              <p className="mb-2">• Take any number of stones from chosen pile</p>
+              <p className="mb-2">• Players take turns removing matches from rows</p>
+              <p className="mb-2">• You can only take from ONE row per turn</p>
+              <p className="mb-2">• Take any number of matches from chosen row</p>
             </div>
             <div>
               <p className="mb-2">• Player 1 always goes first</p>
-              <p className="mb-2">• The player who takes the LAST stone LOSES</p>
-              <p className="mb-2">• Force your opponent to take the final stone!</p>
+              <p className="mb-2">• The player who takes the LAST match LOSES</p>
+              <p className="mb-2">• Force your opponent to take the final match!</p>
             </div>
           </div>
         </div>

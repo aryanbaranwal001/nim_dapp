@@ -105,7 +105,7 @@ io.on('connection', (socket) => {
         const waitingSocket = waitingPlayers.get(gameId);
         
         if (waitingSocket && waitingSocket.playerAddress !== playerAddress) {
-            // Create initial game state
+            // Create initial game state - ensure player1 is the waiting player (goes first)
             const gameState = createGameState(waitingSocket.playerAddress, playerAddress);
             
             // Move game to active games
@@ -124,33 +124,38 @@ io.on('connection', (socket) => {
             waitingSocket.emit('game-ready', gameReadyData);
             socket.emit('game-ready', gameReadyData);
             
-            console.log(`Game started: ${gameId} - ${waitingSocket.playerAddress} vs ${playerAddress}`);
+            console.log(`Game started: ${gameId} - ${waitingSocket.playerAddress} (Player 1) vs ${playerAddress} (Player 2)`);
         } else {
             // No waiting player found or same player rejoining
             console.log('No valid waiting player found for gameId:', gameId);
             
             // Check if this player was already in a game (reconnection scenario)
-            const existingGame = Array.from(activeGames.values()).find(game => 
-                game.player1.toLowerCase() === playerAddress.toLowerCase() || 
-                game.player2.toLowerCase() === playerAddress.toLowerCase()
-            );
-            
-            if (existingGame) {
-                // Player reconnecting to existing game
-                if (!existingGame.sockets.some(s => s.id === socket.id)) {
-                    existingGame.sockets.push(socket);
+            for (const [existingGameId, existingGame] of activeGames.entries()) {
+                if (existingGame.player1.toLowerCase() === playerAddress.toLowerCase() || 
+                    existingGame.player2.toLowerCase() === playerAddress.toLowerCase()) {
+                    
+                    console.log(`Player ${playerAddress} reconnecting to existing game ${existingGameId}`);
+                    
+                    // Update the socket's gameId to match the existing game
+                    socket.gameId = existingGameId;
+                    
+                    // Add socket if not already present
+                    if (!existingGame.sockets.some(s => s.id === socket.id)) {
+                        existingGame.sockets.push(socket);
+                    }
+                    
+                    socket.emit('game-ready', { 
+                        gameId: existingGameId,
+                        gameState: existingGame.gameState 
+                    });
+                    return;
                 }
-                socket.emit('game-ready', { 
-                    gameId,
-                    gameState: existingGame.gameState 
-                });
-                console.log(`Player ${playerAddress} reconnected to existing game`);
-            } else {
-                // Start waiting for this game
-                waitingPlayers.set(gameId, socket);
-                socket.emit('waiting-for-opponent');
-                console.log(`Player ${playerAddress} is now waiting for game ${gameId}`);
             }
+            
+            // Start waiting for this game
+            waitingPlayers.set(gameId, socket);
+            socket.emit('waiting-for-opponent');
+            console.log(`Player ${playerAddress} is now waiting for game ${gameId}`);
         }
     });
     
@@ -158,16 +163,33 @@ io.on('connection', (socket) => {
         const { gameId, player, pile, stonesTaken } = data;
         console.log('Move made:', data);
         
-        const game = activeGames.get(gameId);
+        // Find game by gameId OR by player address
+        let game = activeGames.get(gameId);
+        let actualGameId = gameId;
+        
         if (!game) {
-            console.error('Game not found for move:', gameId);
+            // Try to find game by player address
+            for (const [id, gameData] of activeGames.entries()) {
+                if (gameData.player1.toLowerCase() === player.toLowerCase() || 
+                    gameData.player2.toLowerCase() === player.toLowerCase()) {
+                    game = gameData;
+                    actualGameId = id;
+                    console.log(`Found game by player address: ${id}`);
+                    break;
+                }
+            }
+        }
+        
+        if (!game) {
+            console.error('Game not found for move:', gameId, 'Player:', player);
+            console.log('Active games:', Array.from(activeGames.keys()));
             socket.emit('invalid-move', { reason: 'Game not found' });
             return;
         }
         
         // Validate move
         if (!isPlayerTurn(game.gameState, player)) {
-            console.error('Not player\'s turn:', player);
+            console.error('Not player\'s turn:', player, 'Current player:', game.gameState.currentPlayer);
             socket.emit('invalid-move', { reason: 'Not your turn' });
             return;
         }
@@ -224,7 +246,7 @@ io.on('connection', (socket) => {
                     });
                 }
             });
-            console.log(`Game finished: ${gameId}, Winner: ${game.gameState.winner}`);
+            console.log(`Game finished: ${actualGameId}, Winner: ${game.gameState.winner}`);
         }
     });
     
