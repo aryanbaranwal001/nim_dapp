@@ -25,7 +25,6 @@ A decentralized two-player Nim game built on Ethereum where players stake real E
 - **Network**: Zircuit Mainnet
 - **Zircuit Scan**: [View Contract](https://explorer.zircuit.com/address/0x169F6de062528e501d3526Fe9d7603a01992d5DC)
 
-**⚠️ WARNING**: This uses **real ETH** on mainnet. Each game costs **0.0001 ETH** to play.
 
 ## 🏗️ Technology Stack
 
@@ -73,18 +72,18 @@ nim-staking-game/
 ### Option 1: Local Testing with Foundry Anvil
 
 ```bash
-# 1. Clone the repository
+#Clone the repository
 git clone https://github.com/aryanbaranwal001/nim_dapp.git
 cd nim_dapp
 
-# 2. Install dependencies
+#Install dependencies
 cd backend && npm install
 cd ../frontend && npm install
 
-# 6. Start backend server 
+#Start backend server 
 cd backend && npm run dev
 
-# 7. Start frontend 
+#Start frontend 
 cd frontend && npm run dev
 
 #Connect to Mainnet (Real ETH)
