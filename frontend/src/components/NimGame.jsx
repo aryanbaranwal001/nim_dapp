@@ -445,7 +445,7 @@ const NimGame = ({ wallet, gameData, onMove, onBackToLobby, gameId }) => {
               }`}>
                 <p className="text-xl font-semibold">
                   {gameState.winner?.toLowerCase() === wallet?.address?.toLowerCase() 
-                    ? '💰 You get 0.2 ETH!' 
+                    ? '💰 You get 0.00002 ETH!' 
                     : '💸 Better luck next time!'}
                 </p>
                 <p className="text-sm mt-2 text-gray-400">

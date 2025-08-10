@@ -34,7 +34,7 @@ const GameLobby = ({ wallet, onStartGame }) => {
             <p>• Game starts with <strong>21 stones</strong></p>
             <p>• Take 1-3 stones on your turn</p>
             <p>• Player who takes the last stone <strong>loses</strong></p>
-            <p>• Winner gets <strong>0.2 ETH total</strong></p>
+            <p>• Winner gets <strong>0.0002 ETH total</strong></p>
           </div>
         </div>
 
