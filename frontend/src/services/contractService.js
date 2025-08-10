@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
 
-// UPDATE THIS WITH YOUR DEPLOYED CONTRACT ADDRESS
-export const CONTRACT_ADDRESS = '0xc7Bc1928a947aD9C73674c1B4CB5D8406cdb9fe7'; // Replace with actual address
+// This is the deployed contract on Zircuit
+export const CONTRACT_ADDRESS = '0x169F6de062528e501d3526Fe9d7603a01992d5DC'; // Replace with actual address
 
 export const CONTRACT_ABI = [
   "function createOrJoinGame() external payable",

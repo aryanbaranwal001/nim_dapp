@@ -4,9 +4,9 @@ import useGameStore from '../services/useGameStore';
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from "../services/contractService";
 import { ethers } from "ethers";
 
-const provider = new ethers.JsonRpcProvider("https://ethereum-sepolia-rpc.publicnode.com", {
-  name: "sepolia",
-  chainId: 11155111
+const provider = new ethers.JsonRpcProvider("https://mainnet.zircuit.com", {
+  name: "zircuit mainnet",
+  chainId: 48900
 });
 
 
